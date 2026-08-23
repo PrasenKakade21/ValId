@@ -4,14 +4,10 @@ import React, { useState, useCallback } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { Upload, FileSpreadsheet, Check, AlertCircle, ArrowRight } from "lucide-react";
-
-export interface TargetFields {
-  fullName: string;
-  role: string;
-  company: string;
-  email: string;
-  ticketCode: string;
-}
+import type {
+  AttendeeInput,
+  AttendeeRecord,
+} from "@/types/attendee";
 
 interface ParsedData {
   headers: string[];
@@ -19,10 +15,10 @@ interface ParsedData {
 }
 
 interface BulkImporterProps {
-  onDataMapped: (mappedAttendees: TargetFields[]) => void;
+  onDataMapped: (mappedAttendees: AttendeeInput[]) => void;
 }
 
-const REQUIRED_APP_FIELDS: { key: keyof TargetFields; label: string; required: boolean }[] = [
+const REQUIRED_APP_FIELDS: { key: keyof AttendeeInput; label: string; required: boolean }[] = [
   { key: "fullName", label: "Full Name", required: true },
   { key: "role", label: "Role / Badge Type", required: false },
   { key: "company", label: "Company / Org", required: false },
@@ -32,7 +28,7 @@ const REQUIRED_APP_FIELDS: { key: keyof TargetFields; label: string; required: b
 
 export default function BulkImporter({ onDataMapped }: BulkImporterProps) {
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
-  const [fieldMapping, setFieldMapping] = useState<Record<keyof TargetFields, string>>({
+  const [fieldMapping, setFieldMapping] = useState<Record<keyof AttendeeInput, string>>({
     fullName: "",
     role: "",
     company: "",
@@ -44,7 +40,7 @@ export default function BulkImporter({ onDataMapped }: BulkImporterProps) {
 
   // Auto-guess column mappings based on header name similarity
   const autoMapHeaders = (headers: string[]) => {
-    const initialMapping: Record<keyof TargetFields, string> = {
+    const initialMapping: Record<keyof AttendeeInput, string> = {
       fullName: "",
       role: "",
       company: "",
@@ -122,7 +118,7 @@ export default function BulkImporter({ onDataMapped }: BulkImporterProps) {
     }
   }, []);
 
-  const handleMappingChange = (targetField: keyof TargetFields, sourceColumn: string) => {
+  const handleMappingChange = (targetField: keyof AttendeeRecord, sourceColumn: string) => {
     setFieldMapping((prev) => ({ ...prev, [targetField]: sourceColumn }));
   };
 
@@ -135,7 +131,7 @@ export default function BulkImporter({ onDataMapped }: BulkImporterProps) {
       return;
     }
 
-    const mappedAttendees: TargetFields[] = parsedData.rows.map((row, index) => ({
+    const mappedAttendees: AttendeeInput[] = parsedData.rows.map((row, index) => ({
       fullName: row[fieldMapping.fullName] || "Attendee",
       role: row[fieldMapping.role] || "General",
       company: row[fieldMapping.company] || "",

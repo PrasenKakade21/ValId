@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-
+import { AttendeeRecord } from "@/types/attendee";
 type RouteContext = {
   params: Promise<{
     eventId: string;
@@ -156,14 +156,20 @@ export async function POST(
     for (const attendee of attendees) {
       if (!attendee.ticketCode) {
         return NextResponse.json(
-          { error: "Every attendee must have a ticketCode" },
+          {
+            error:
+              "Every attendee must have a ticketCode",
+          },
           { status: 400 }
         );
       }
 
       if (!attendee.fullName) {
         return NextResponse.json(
-          { error: "Every attendee must have a fullName" },
+          {
+            error:
+              "Every attendee must have a fullName",
+          },
           { status: 400 }
         );
       }
@@ -171,7 +177,7 @@ export async function POST(
 
     // -----------------------------------------------------
     // Convert camelCase → snake_case
-    // event_id ALWAYS comes from the URL
+    // event_id ALWAYS comes from URL
     // -----------------------------------------------------
 
     const payload = attendees.map((attendee) => ({
@@ -189,26 +195,44 @@ export async function POST(
     }));
 
     // -----------------------------------------------------
-    // Upsert
+    // Insert
     //
-    // Uses UNIQUE(event_id, ticket_code)
+    // UNIQUE(event_id, ticket_code) prevents duplicates
     // -----------------------------------------------------
 
     const { data, error } = await supabase
       .from("attendees")
-      .upsert(payload, {
-        onConflict: "event_id,ticket_code",
-      })
+      .insert(payload)
       .select();
+
+    // -----------------------------------------------------
+    // Handle database errors
+    // -----------------------------------------------------
 
     if (error) {
       console.error("POST attendees error:", error);
+
+      if (error.code === "23505") {
+        return NextResponse.json(
+          {
+            error:
+              "One or more ticket IDs already exist for this event.",
+          },
+          { status: 409 }
+        );
+      }
 
       return NextResponse.json(
         { error: error.message },
         { status: 500 }
       );
     }
+
+    // -----------------------------------------------------
+    // Success
+    // -----------------------------------------------------
+
+    console.log("Inserted attendees:", data);
 
     return NextResponse.json(
       {
@@ -219,7 +243,10 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST attendees exception:", error);
+    console.error(
+      "POST attendees exception:",
+      error
+    );
 
     return NextResponse.json(
       { error: "Internal server error" },

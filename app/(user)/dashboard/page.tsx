@@ -14,48 +14,16 @@ import {
 
 import Link from "next/link";
 import useSWR from "swr";
-
+import { useMemo } from "react";
 import { fetcher } from "@/lib/fetcher";
-
-
+import { Organization } from "@/types/org";
+import { Event } from "@/types/event";
 // ===========================================================
 // TYPES
 // ===========================================================
 
-type Organization = {
-  id: string;
-  name: string;
-  slug: string;
 
-  role:
-    | "owner"
-    | "admin"
-    | "staff"
-    | "volunteer";
 
-  members: number;
-  events: number;
-};
-
-type UpcomingEvent = {
-  id: string;
-  name: string;
-  slug: string;
-
-  organization: string;
-  organizationSlug: string;
-
-  date: string;
-  location: string;
-
-  status:
-    | "Upcoming"
-    | "Ongoing"
-    | "Ended"
-    | "Draft";
-
-  role: string;
-};
 
 type DashboardData = {
   user: {
@@ -68,7 +36,7 @@ type DashboardData = {
 
   events: any[];
 
-  upcomingEvents: UpcomingEvent[];
+  upcomingEvents: Event[];
 
   stats: {
     organizations: number;
@@ -172,36 +140,27 @@ function OrganizationCard({
 // ===========================================================
 // EVENT CARD
 // ===========================================================
-
-function EventCard({
-  event,
-}: {
-  event: UpcomingEvent;
-}) {
+interface EventCardProps {
+  event: Event;
+  org: Organization;
+}
+export function EventCard({ event, org }: EventCardProps) {
   return (
     <Link
-      href={`/dashboard/${event.organizationSlug}/${event.slug}`}
+      href={`/dashboard/${org.slug}/${event.slug}`}
       className="group flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
     >
-
       {/* Event icon */}
-
       <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-800">
-
         <CalendarDays
           size={19}
           className="text-zinc-700 dark:text-zinc-300"
         />
-
       </div>
 
-
       {/* Event information */}
-
       <div className="min-w-0 flex-1">
-
         <div className="flex items-center gap-2">
-
           <h3 className="truncate font-semibold text-zinc-900 dark:text-white">
             {event.name}
           </h3>
@@ -210,7 +169,6 @@ function EventCard({
             className={`
               hidden rounded-full px-2 py-0.5
               text-[10px] font-medium sm:block
-
               ${
                 event.status === "Ongoing"
                   ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
@@ -220,54 +178,38 @@ function EventCard({
           >
             {event.status}
           </span>
-
         </div>
 
-
-        <p className="mt-1 text-sm text-zinc-500">
-          {event.organization}
-        </p>
-
+        <p className="mt-1 text-sm text-zinc-500">{org.name}</p>
 
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+          {event.starts_at && (
+            <span className="flex items-center gap-1.5">
+              <Clock3 size={13} />
+              {event.starts_at}
+            </span>
+          )}
 
-          <span className="flex items-center gap-1.5">
-            <Clock3 size={13} />
-
-            {event.date}
-          </span>
-
-
-          <span className="flex items-center gap-1.5">
-            <MapPin size={13} />
-
-            {event.location}
-          </span>
-
+          {event.location && (
+            <span className="flex items-center gap-1.5">
+              <MapPin size={13} />
+              {event.location}
+            </span>
+          )}
         </div>
-
       </div>
 
-
       {/* Role */}
-
       <div className="hidden items-center gap-2 text-xs text-zinc-500 sm:flex">
-
-        <span className="capitalize">
-          {event.role}
-        </span>
-
+        <span className="capitalize">{org.role}</span>
         <ChevronRight
           size={17}
           className="transition group-hover:translate-x-0.5 group-hover:text-zinc-900 dark:group-hover:text-white"
         />
-
       </div>
-
     </Link>
   );
 }
-
 
 // ===========================================================
 // LOADING SKELETON
@@ -338,7 +280,8 @@ export default function DashboardPage() {
   } = useSWR<DashboardData>(
     "/api/dashboard",
     fetcher,
-    {
+     {
+          refreshInterval: 180000,
       revalidateOnFocus: false,
     }
   );
@@ -425,6 +368,10 @@ export default function DashboardPage() {
         organization.role === "volunteer"
     );
 
+// Create an O(1) Lookup Map: org_id -> Organization
+  const orgMap = new Map(organizations.map((org) => [org.id, org]));
+
+  
 
   // ---------------------------------------------------------
   // GREETING
@@ -609,37 +556,32 @@ export default function DashboardPage() {
 
           <div className="space-y-3">
 
-            {upcomingEvents.length === 0 ? (
+          {upcomingEvents.length === 0 ? (
+  <div className="rounded-2xl border border-dashed border-zinc-300 p-8 text-center dark:border-zinc-800">
+    <CalendarDays size={24} className="mx-auto text-zinc-400" />
+    <p className="mt-3 text-sm font-medium text-zinc-900 dark:text-white">
+      No upcoming events
+    </p>
+    <p className="mt-1 text-xs text-zinc-500">
+      Events you are involved in will appear here.
+    </p>
+  </div>
+) : (
+  <div className="space-y-3">
+    {upcomingEvents.map((event) => {
+      const org = orgMap.get(event.org_id);
+      if (!org) return null;
 
-              <div className="rounded-2xl border border-dashed border-zinc-300 p-8 text-center dark:border-zinc-800">
-
-                <CalendarDays
-                  size={24}
-                  className="mx-auto text-zinc-400"
-                />
-
-                <p className="mt-3 text-sm font-medium text-zinc-900 dark:text-white">
-                  No upcoming events
-                </p>
-
-                <p className="mt-1 text-xs text-zinc-500">
-                  Events you are involved in will appear here.
-                </p>
-
-              </div>
-
-            ) : (
-
-              upcomingEvents.map(
-                (event) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                  />
-                )
-              )
-
-            )}
+      return (
+        <EventCard
+          key={event.id}
+          event={event}
+          org={org}
+        />
+      );
+    })}
+  </div>
+)}
 
           </div>
 

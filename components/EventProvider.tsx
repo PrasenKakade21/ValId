@@ -1,49 +1,63 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  type ReactNode,
-} from "react";
-
-type Event = {
+import { createContext, useContext, type ReactNode } from "react";
+import { Event } from "@/types/event";
+export type Organization = {
   id: string;
-  org_id: string;
   name: string;
   slug: string;
-  status: string;
+  role: string;
 };
 
-type EventContextType = {
+
+type DashboardContextType = {
   event: Event;
+  org: Organization;
 };
 
-const EventContext = createContext<EventContextType | null>(null);
+const DashboardContext = createContext<DashboardContextType | null>(null);
 
 type EventProviderProps = {
   event: Event;
+  org: Organization;
   children: ReactNode;
 };
 
 export function EventProvider({
   event,
+  org,
   children,
 }: EventProviderProps) {
   return (
-    <EventContext.Provider value={{ event }}>
+    <DashboardContext.Provider value={{ event, org }}>
       {children}
-    </EventContext.Provider>
+    </DashboardContext.Provider>
   );
 }
 
-export function useEvent() {
-  const context = useContext(EventContext);
+/* =========================================================
+    CUSTOM HOOKS
+   ========================================================= */
+
+// Hook to access both event and organization together
+export function useDashboardContext() {
+  const context = useContext(DashboardContext);
 
   if (!context) {
-    throw new Error(
-      "useEvent must be used inside an EventProvider"
-    );
+    throw new Error("useDashboardContext must be used inside an EventProvider");
   }
 
-  return context.event;
+  return context;
+}
+
+// Convenience hook to access only the event
+export function useEvent() {
+  const { event } = useDashboardContext();
+  return event;
+}
+
+// Convenience hook to access only the organization
+export function useOrg() {
+  const { org } = useDashboardContext();
+  return org;
 }

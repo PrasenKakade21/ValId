@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { Team } from "@/types/team";
 
 export async function GET() {
   const supabase = await createClient();
@@ -266,7 +267,6 @@ export async function GET() {
   // ---------------------------------------------
   // RESPONSE
   // ---------------------------------------------
-console.log("all events:" , events)
   return NextResponse.json({
     user: {
       id: user.id,

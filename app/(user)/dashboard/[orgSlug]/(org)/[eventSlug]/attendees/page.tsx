@@ -17,18 +17,9 @@ import {
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher";
 import { useEvent } from "@/components/EventProvider";
+import { AttendeeRecord } from "@/types/attendee";
 // Database Schema Interface
-export interface AttendeeRecord {
-  id: string; // UUID
-  ticket_code: string;
-  full_name: string;
-  role: string;
-  company: string | null;
-  email: string | null;
-  checked_in: boolean;
-  checked_in_at: string | null;
-  created_at: string;
-}
+
 type AttendeesResponse = {
   success: boolean;
   attendees: AttendeeRecord[];
@@ -57,6 +48,7 @@ const event = useEvent();
     `/api/events/${event.id}/attendees`,
     fetcher,
     {
+          refreshInterval: 180000,
       revalidateOnFocus: false,
     }
   );

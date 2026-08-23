@@ -2,17 +2,12 @@
 
 import React, { forwardRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
-
-export interface AttendeeData {
-  fullName: string;
-  role: string;
-  company: string;
-  email: string;
-  ticketCode: string;
-}
-
+import type {
+  AttendeeInput,
+  AttendeeRecord,
+} from "@/types/attendee";
 interface CardCanvasProps {
-  attendee: AttendeeData;
+  attendee: AttendeeInput;
 }
 
 const CardCanvas = forwardRef<HTMLDivElement, CardCanvasProps>(({ attendee }, ref) => {
