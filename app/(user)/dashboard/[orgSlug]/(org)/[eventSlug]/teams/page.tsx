@@ -9,23 +9,12 @@ import {
   Plus,
   Copy,
   Check,
-  Calendar,
-  Layers,
   ArrowRight,
   ShieldAlert,
+  Loader2,
 } from "lucide-react";
 import { Team } from "@/types/team";
-
-
-type Event = {
-  id: string;
-  name: string;
-  slug: string;
-};
-
-type DashboardData = {
-  events: Event[];
-};
+import { useEvent } from "@/components/EventProvider";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -37,21 +26,15 @@ const fetcher = async (url: string) => {
 };
 
 export default function TeamsPage() {
-  const [selectedEventId, setSelectedEventId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  
+  // Get active event details from provider
+  const event = useEvent();
+  const eventId = event?.id;
 
-  // 1. Fetch Dashboard context for available events
-  const { data: dashboardData, isLoading: isDashboardLoading } =
-    useSWR<DashboardData>("/api/dashboard", fetcher);
-
-  const events = dashboardData?.events ?? [];
-
-  // 2. Fetch Teams conditionally depending on selected event filter
-  const teamsEndpoint =
-    selectedEventId !== "all"
-      ? `/api/events/${selectedEventId}/teams`
-      : null;
+  // Fetch teams using the current event ID
+  const teamsEndpoint = eventId ? `/api/events/${eventId}/teams` : null;
 
   const {
     data: teamsData,
@@ -59,19 +42,15 @@ export default function TeamsPage() {
     error: teamsError,
   } = useSWR<Team[]>(teamsEndpoint, fetcher);
 
-  // Map events for quick lookup
-  const eventMap = useMemo(() => {
-    return new Map(events.map((e) => [e.id, e.name]));
-  }, [events]);
-
-  const rawTeams = teamsData ?? [];
+  const rawTeams = useMemo(() => teamsData ?? [], [teamsData]);
 
   // Filter teams by search input
   const filteredTeams = useMemo(() => {
     return rawTeams.filter((team) => {
-      const matchesSearch =
-        team.name.toLowerCase().includes(searchQuery.toLowerCase())      
-        return matchesSearch;
+      const query = searchQuery.toLowerCase();
+      const matchesName = team.name.toLowerCase().includes(query);
+      // const matchesCode = team.code?.toLowerCase().includes(query);
+      return matchesName;
     });
   }, [rawTeams, searchQuery]);
 
@@ -91,12 +70,15 @@ export default function TeamsPage() {
               Teams
             </h1>
             <p className="mt-1 text-sm text-zinc-500">
-              Overview of all participating event teams and access codes.
+              Overview of all participating teams for{" "}
+              <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                {event?.name || "the active event"}
+              </span>.
             </p>
           </div>
 
           <Link
-            href="/dashboard/teams/new"
+            href="teams/new"
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
           >
             <Plus size={16} />
@@ -104,9 +86,9 @@ export default function TeamsPage() {
           </Link>
         </div>
 
-        {/* Filters and Controls */}
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-md">
+        {/* Controls */}
+        <div className="mt-8 flex items-center justify-between gap-4">
+          <div className="relative max-w-md flex-1">
             <Search
               size={16}
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
@@ -119,39 +101,10 @@ export default function TeamsPage() {
               className="w-full rounded-xl border border-zinc-200 bg-white py-2 pl-10 pr-4 text-sm outline-none transition focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:focus:border-zinc-700"
             />
           </div>
-
-          <div className="flex items-center gap-2">
-            <Calendar size={15} className="text-zinc-400" />
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
-            >
-              <option value="all">Select an event...</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.name}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
-        {/* State 1: Prompt to select an event */}
-        {selectedEventId === "all" && (
-          <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-12 text-center dark:border-zinc-800">
-            <Layers size={28} className="mx-auto text-zinc-400" />
-            <p className="mt-3 text-sm font-semibold text-zinc-900 dark:text-white">
-              Select an event to view teams
-            </p>
-            <p className="mt-1 text-xs text-zinc-500">
-              Choose an event from the dropdown filter above to load its associated teams.
-            </p>
-          </div>
-        )}
-
-        {/* State 2: Loading State */}
-        {selectedEventId !== "all" && isTeamsLoading && (
+        {/* Loading State */}
+        {isTeamsLoading && (
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <div
@@ -162,7 +115,7 @@ export default function TeamsPage() {
           </div>
         )}
 
-        {/* State 3: Error State */}
+        {/* Error State */}
         {teamsError && (
           <div className="mt-8 rounded-2xl border border-red-200 bg-red-50/50 p-6 text-center dark:border-red-900/50 dark:bg-red-950/20">
             <ShieldAlert size={24} className="mx-auto text-red-500" />
@@ -172,8 +125,8 @@ export default function TeamsPage() {
           </div>
         )}
 
-        {/* State 4: Teams Grid */}
-        {selectedEventId !== "all" && !isTeamsLoading && !teamsError && (
+        {/* Teams Grid */}
+        {!isTeamsLoading && !teamsError && (
           <>
             {filteredTeams.length === 0 ? (
               <div className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-12 text-center dark:border-zinc-800">
@@ -183,15 +136,14 @@ export default function TeamsPage() {
                 </p>
                 <p className="mt-1 text-xs text-zinc-500">
                   {searchQuery
-                    ? "No teams match your search term."
+                    ? "No teams match your search query."
                     : "There are no registered teams for this event yet."}
                 </p>
               </div>
             ) : (
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredTeams.map((team) => {
-                  const eventName = eventMap.get(team.event_id) || "Event";
-                  const memberCount = team.team_members?.length ?? 0;
+                  const memberCount = team.memberIds?.length ?? 0;
 
                   return (
                     <div
@@ -202,7 +154,7 @@ export default function TeamsPage() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <span className="text-[10px] font-medium tracking-wider uppercase text-zinc-400">
-                              {eventName}
+                              {event?.name || "Event"}
                             </span>
                             <h3 className="text-base font-semibold text-zinc-950 dark:text-white">
                               {team.name}
@@ -215,27 +167,28 @@ export default function TeamsPage() {
                           </div>
                         </div>
 
-                        {/* Join Code Snippet */}
-                        {/* <div className="mt-4 flex items-center justify-between rounded-xl bg-zinc-50 p-2.5 dark:bg-zinc-950/60">
-                          <div>
-                            <p className="text-[10px] text-zinc-400">Join Code</p>
-                            <p className="font-mono text-xs font-bold tracking-wider text-zinc-900 dark:text-zinc-200">
-                              {team.code}
-                            </p>
-                          </div>
+                        {/* {team.code && (
+                          <div className="mt-4 flex items-center justify-between rounded-xl bg-zinc-50 p-2.5 dark:bg-zinc-950/60">
+                            <div>
+                              <p className="text-[10px] text-zinc-400">Join Code</p>
+                              <p className="font-mono text-xs font-bold tracking-wider text-zinc-900 dark:text-zinc-200">
+                                {team.code}
+                              </p>
+                            </div>
 
-                          <button
-                            onClick={() => handleCopyCode(team.code)}
-                            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-200/60 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                            title="Copy Join Code"
-                          >
-                            {copiedCode === team.code ? (
-                              <Check size={14} className="text-emerald-500" />
-                            ) : (
-                              <Copy size={14} />
-                            )}
-                          </button>
-                        </div> */}
+                            <button
+                              onClick={() => handleCopyCode(team.code)}
+                              className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-200/60 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                              title="Copy Join Code"
+                            >
+                              {copiedCode === team.code ? (
+                                <Check size={14} className="text-emerald-500" />
+                              ) : (
+                                <Copy size={14} />
+                              )}
+                            </button>
+                          </div>
+                        )} */}
                       </div>
 
                       <div className="mt-5 border-t border-zinc-100 pt-3 dark:border-zinc-800">

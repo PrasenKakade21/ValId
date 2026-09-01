@@ -40,6 +40,7 @@ export function SidebarNav({
     { name: "Overview", endpoint: "", icon: LayoutDashboard },
     { name: "ID Generator", endpoint: "generator", icon: CreditCard },
     { name: "Attendees", endpoint: "attendees", icon: Users },
+    { name: "Members", endpoint: "members", icon: Users },
   ];
 
   const teamsHref = getNavigationUrl("teams");

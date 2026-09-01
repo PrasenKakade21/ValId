@@ -1,3 +1,6 @@
+import {User} from '@supabase/supabase-js'
+import { Team } from './team';
+
 type EventStatus = 
     | "Upcoming"
     | "Ongoing"
@@ -22,6 +25,16 @@ export interface EventRole {
   name: string;
   rank: number; // 1 = Admin, 2 = Team Lead, 3 = Volunteer
 }
+export interface EventRoles{
+  eventRoles:EventRole[]
+}
+export type MemberStatus =     
+    | "Active"
+    | "InActive"
+    | "Pending"
+    | "Declined"
+    | "Removed";
+
 export interface EventMember {
   id: string;
   eventId: string;
@@ -31,6 +44,7 @@ export interface EventMember {
   status: MemberStatus;
   joinedAt: string;
 }
+
 export interface EventMemberWithDetails extends EventMember {
   user: User; // Standard Supabase auth user object
   role: EventRole;

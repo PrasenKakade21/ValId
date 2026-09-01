@@ -10,6 +10,7 @@ export type Team = {
   description?: string | null;
   created_at: string;
   updated_at: string;
+  memberIds: string[] | null;
 };
 
 // ==========================================
@@ -25,8 +26,12 @@ export interface TeamMember {
   user_id: string;
   team_id: string;
   assigned_at: string;
-  
-  // Joined display details
-  user: User;        // Native Supabase Auth User object
+  joinedAt: string;
   role: EventRole;   // Joined role object
+}
+
+export interface TeamMemberWithDetails extends TeamMember {
+  user: User; // Standard Supabase auth user object
+  role: EventRole;
+  team: Team | null;
 }
