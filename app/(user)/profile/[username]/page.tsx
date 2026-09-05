@@ -1,376 +1,317 @@
-import {
-  MapPin,
-  Mail,
-  Phone,
-  Globe,
-  CalendarDays,
-  Circle,
-  User,
-} from "lucide-react";
+"use client";
+
+import React, { useMemo } from "react";
+import { useParams } from "next/navigation";
+import useSWR from "swr";
+import { User, MapPin, AtSign, Circle, Loader2, Globe } from "lucide-react";
+
+type ProfileStatus = "active" | "away" | "busy" | "offline";
 
 type PublicProfile = {
+  id: string;
   name: string;
   username: string;
-  email: string;
-  phone: string | null;
-  location: string | null;
-  bio: string | null;
-  status: "active" | "away" | "busy" | "offline";
+  bio: string;
+  location: string;
+  status: ProfileStatus;
   avatarUrl: string | null;
-  joinedAt: string;
 };
 
-type PageProps = {
-  params: Promise<{
-    username: string;
-  }>;
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+
+    throw new Error(data?.message || "Failed to load profile");
+  }
+
+  return response.json();
 };
 
-/*
- * ============================================================
- * DUMMY PUBLIC PROFILE
- * ============================================================
- *
- * Replace this with the API request below.
- */
-const dummyProfile: PublicProfile = {
-  name: "Prasen Kakade",
-  username: "prasen",
-  email: "prasen@example.com",
-  phone: "+91 98765 43210",
-  location: "Mumbai, India",
-  bio: "Building products, experimenting with ideas, and working on interesting things.",
-  status: "active",
-  avatarUrl: null,
-  joinedAt: "January 2026",
+const statusConfig: Record<
+  ProfileStatus,
+  {
+    label: string;
+    description: string;
+  }
+> = {
+  active: {
+    label: "Active",
+    description: "Available",
+  },
+  away: {
+    label: "Away",
+    description: "Currently away",
+  },
+  busy: {
+    label: "Busy",
+    description: "Do not disturb",
+  },
+  offline: {
+    label: "Offline",
+    description: "Appear offline",
+  },
 };
 
-export default async function PublicProfilePage({
-  params,
-}: PageProps) {
-  const { username: rawUsername } = await params;
+export default function PublicProfilePage() {
+const params = useParams();
 
-  /*
-   * The URL will contain:
-   *
-   * /profile/@prasen
-   *
-   * So remove the @ before using the username.
-   */
-  const username = rawUsername.startsWith("@")
-    ? rawUsername.slice(1)
-    : rawUsername;
+const rawUsername = Array.isArray(params.username)
+  ? params.username[0]
+  : params.username;
 
-  /*
-   * ============================================================
-   * FETCH PUBLIC PROFILE
-   * ============================================================
-   *
-   * TODO: Replace dummyProfile with your API request.
-   *
-   * Recommended endpoint:
-   *
-   * GET /api/profile/public/:username
-   *
-   * Example:
-   *
-   * const response = await fetch(
-   *   `${process.env.NEXT_PUBLIC_APP_URL}/api/profile/public/${username}`,
-   *   {
-   *     next: {
-   *       revalidate: 60,
-   *     },
-   *   }
-   * );
-   *
-   * if (!response.ok) {
-   *   if (response.status === 404) {
-   *     notFound();
-   *   }
-   *
-   *   throw new Error("Failed to load profile");
-   * }
-   *
-   * const profile: PublicProfile = await response.json();
-   */
+const username = rawUsername
+  ? decodeURIComponent(rawUsername).replace(/^@/, "")
+  : null;
 
-  const profile = dummyProfile;
+console.log(rawUsername, username);
+
+const {
+  data: profile,
+  error,
+  isLoading,
+} = useSWR<PublicProfile>(
+  username
+    ? `/api/users/profile/${encodeURIComponent(username)}`
+    : null,
+  fetcher
+);
+  const initials = useMemo(() => {
+    if (!profile?.name) {
+      return "?";
+    }
+
+    return profile.name
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part.charAt(0))
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+  }, [profile?.name]);
 
   /*
    * ============================================================
-   * PROFILE PRIVACY
+   * LOADING
    * ============================================================
-   *
-   * The API should return 404 / 403 when:
-   *
-   * - User doesn't exist
-   * - Username doesn't exist
-   * - Profile is private
-   *
-   * Do NOT return private profile data to this page.
-   *
-   * Example:
-   *
-   * if (!profile) {
-   *   notFound();
-   * }
    */
 
-  const initials = profile.name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part.charAt(0))
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  if (isLoading) {
+    return (
+      <div className="mx-auto flex min-h-[400px] w-full max-w-5xl items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-mutedText" />
+      </div>
+    );
+  }
 
-  const statusConfig = {
-    active: {
-      label: "Active",
-      color: "text-emerald-400",
-      dot: "text-emerald-400",
-    },
-    away: {
-      label: "Away",
-      color: "text-yellow-400",
-      dot: "text-yellow-400",
-    },
-    busy: {
-      label: "Busy",
-      color: "text-red-400",
-      dot: "text-red-400",
-    },
-    offline: {
-      label: "Offline",
-      color: "text-zinc-500",
-      dot: "text-zinc-500",
-    },
-  };
+  /*
+   * ============================================================
+   * NOT FOUND / ERROR
+   * ============================================================
+   */
+
+  if (error || !profile) {
+    return (
+      <div className="mx-auto w-full max-w-5xl pb-10">
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold tracking-tight text-brightText">
+            Profile
+          </h1>
+
+          <p className="mt-1 text-sm text-mutedText">
+            The profile you're looking for could not be found.
+          </p>
+        </div>
+
+        <section className="rounded-xl border border-border bg-card p-8 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <User className="h-5 w-5 text-mutedText" />
+          </div>
+
+          <h2 className="mt-4 text-sm font-medium text-brightText">
+            Profile not found
+          </h2>
+
+          <p className="mx-auto mt-1 max-w-sm text-sm text-mutedText">
+            This profile may not exist or may not be publicly available.
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   const status = statusConfig[profile.status];
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="w-full max-w-5xl mx-auto px-6 py-12 lg:px-8">
-        {/* ================================================== */}
-        {/* PROFILE HEADER */}
-        {/* ================================================== */}
+    <div className="mx-auto w-full max-w-5xl pb-10">
+      {/* ======================================================
+          HEADER
+          ====================================================== */}
 
-        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
-          {/* Cover */}
-          <div className="h-40 bg-gradient-to-r from-zinc-900 via-zinc-950 to-zinc-900 border-b border-zinc-800" />
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-brightText">
+          Profile
+        </h1>
 
-          <div className="px-6 sm:px-8 pb-8">
-            <div className="-mt-14 flex flex-col sm:flex-row sm:items-end gap-5">
+        <p className="mt-1 text-sm text-mutedText">
+          View {profile.name}'s public profile.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        {/* ====================================================
+            PROFILE HEADER
+            ==================================================== */}
+
+        <section className="rounded-xl border border-border bg-card">
+          <div className="p-6">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
               {/* Avatar */}
-              <div className="w-28 h-28 shrink-0 rounded-3xl bg-zinc-800 border-4 border-zinc-950 flex items-center justify-center overflow-hidden">
-                {profile.avatarUrl ? (
-                  <img
-                    src={profile.avatarUrl}
-                    alt={profile.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl font-semibold text-zinc-300">
-                    {initials}
-                  </span>
-                )}
-              </div>
 
-              {/* Name */}
-              <div className="pb-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-2xl font-semibold tracking-tight">
-                    {profile.name}
-                  </h1>
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.name}
+                  className="h-24 w-24 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-accent/10 text-2xl font-medium text-accent">
+                  {initials}
+                </div>
+              )}
 
-                  <span
-                    className={`inline-flex items-center gap-1.5 text-xs ${status.color}`}
-                  >
-                    <Circle
-                      className={`w-2.5 h-2.5 fill-current ${status.dot}`}
-                    />
+              {/* Identity */}
 
-                    {status.label}
-                  </span>
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold tracking-tight text-brightText">
+                  {profile.name}
+                </h2>
+
+                <div className="mt-1 flex items-center gap-1.5 text-sm text-mutedText">
+                  <AtSign className="h-3.5 w-3.5" />
+
+                  <span>{profile.username}</span>
                 </div>
 
-                <p className="mt-1 text-sm text-zinc-500">
-                  @{profile.username}
-                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      profile.status === "active"
+                        ? "bg-green-500"
+                        : profile.status === "away"
+                          ? "bg-yellow-500"
+                          : profile.status === "busy"
+                            ? "bg-red-500"
+                            : "bg-mutedText"
+                    }`}
+                  />
+
+                  <span className="text-sm text-brightText">
+                    {status.label}
+                  </span>
+
+                  <span className="text-sm text-mutedText">·</span>
+
+                  <span className="text-sm text-mutedText">
+                    {status.description}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ================================================== */}
-        {/* CONTENT */}
-        {/* ================================================== */}
+        {/* ====================================================
+            ABOUT
+            ==================================================== */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-          {/* ================================================= */}
-          {/* ABOUT */}
-          {/* ================================================= */}
+        <section className="rounded-xl border border-border bg-card">
+          <div className="border-b border-border px-6 py-5">
+            <h2 className="font-medium text-brightText">About</h2>
 
-          <section className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-zinc-950">
-            <div className="px-6 py-5 border-b border-zinc-800">
-              <h2 className="text-sm font-semibold text-white">
-                About
-              </h2>
-            </div>
+            <p className="mt-1 text-sm text-mutedText">
+              A little about {profile.name}.
+            </p>
+          </div>
 
-            <div className="p-6">
-              {profile.bio ? (
-                <p className="text-sm leading-6 text-zinc-400">
-                  {profile.bio}
+          <div className="p-6">
+            {profile.bio ? (
+              <p className="whitespace-pre-wrap text-sm leading-6 text-brightText">
+                {profile.bio}
+              </p>
+            ) : (
+              <p className="text-sm text-mutedText">
+                No bio has been added yet.
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* ====================================================
+            DETAILS
+            ==================================================== */}
+
+        <section className="rounded-xl border border-border bg-card">
+          <div className="border-b border-border px-6 py-5">
+            <h2 className="font-medium text-brightText">Details</h2>
+
+            <p className="mt-1 text-sm text-mutedText">
+              Public information about this user.
+            </p>
+          </div>
+
+          <div className="divide-y divide-border">
+            {/* Location */}
+
+            {profile.location && (
+              <div className="flex items-center gap-3 px-6 py-4">
+                <div className="rounded-lg bg-muted p-2">
+                  <MapPin className="h-4 w-4 text-mutedText" />
+                </div>
+
+                <div>
+                  <p className="text-xs text-mutedText">Location</p>
+
+                  <p className="mt-0.5 text-sm text-brightText">
+                    {profile.location}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Username */}
+
+            <div className="flex items-center gap-3 px-6 py-4">
+              <div className="rounded-lg bg-muted p-2">
+                <AtSign className="h-4 w-4 text-mutedText" />
+              </div>
+
+              <div>
+                <p className="text-xs text-mutedText">Username</p>
+
+                <p className="mt-0.5 text-sm text-brightText">
+                  @{profile.username}
                 </p>
-              ) : (
-                <p className="text-sm text-zinc-600">
-                  This user hasn't added a bio yet.
-                </p>
-              )}
-            </div>
-          </section>
-
-          {/* ================================================= */}
-          {/* CONTACT */}
-          {/* ================================================= */}
-
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-950">
-            <div className="px-6 py-5 border-b border-zinc-800">
-              <h2 className="text-sm font-semibold text-white">
-                Contact
-              </h2>
-            </div>
-
-            <div className="p-5 space-y-1">
-              {/* Email */}
-              <div className="flex items-center gap-3 px-2 py-3">
-                <Mail className="w-4 h-4 text-zinc-600 shrink-0" />
-
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wide text-zinc-600">
-                    Email
-                  </p>
-
-                  <p className="mt-0.5 text-sm text-zinc-300 truncate">
-                    {profile.email}
-                  </p>
-                </div>
-              </div>
-
-              {/* Phone */}
-              {profile.phone && (
-                <div className="flex items-center gap-3 px-2 py-3">
-                  <Phone className="w-4 h-4 text-zinc-600 shrink-0" />
-
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-wide text-zinc-600">
-                      Phone
-                    </p>
-
-                    <p className="mt-0.5 text-sm text-zinc-300">
-                      {profile.phone}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Location */}
-              {profile.location && (
-                <div className="flex items-center gap-3 px-2 py-3">
-                  <MapPin className="w-4 h-4 text-zinc-600 shrink-0" />
-
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-wide text-zinc-600">
-                      Location
-                    </p>
-
-                    <p className="mt-0.5 text-sm text-zinc-300">
-                      {profile.location}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* ================================================= */}
-          {/* PROFILE DETAILS */}
-          {/* ================================================= */}
-
-          <section className="lg:col-span-3 rounded-2xl border border-zinc-800 bg-zinc-950">
-            <div className="px-6 py-5 border-b border-zinc-800">
-              <h2 className="text-sm font-semibold text-white">
-                Profile Details
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-zinc-800">
-              {/* Username */}
-              <div className="flex items-center gap-3 px-6 py-5">
-                <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                  <User className="w-4 h-4 text-zinc-500" />
-                </div>
-
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-zinc-600">
-                    Username
-                  </p>
-
-                  <p className="mt-0.5 text-sm text-zinc-300">
-                    @{profile.username}
-                  </p>
-                </div>
-              </div>
-
-              {/* Location */}
-              <div className="flex items-center gap-3 px-6 py-5">
-                <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                  <MapPin className="w-4 h-4 text-zinc-500" />
-                </div>
-
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-zinc-600">
-                    Location
-                  </p>
-
-                  <p className="mt-0.5 text-sm text-zinc-300">
-                    {profile.location ?? "Not specified"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Joined */}
-              <div className="flex items-center gap-3 px-6 py-5">
-                <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                  <CalendarDays className="w-4 h-4 text-zinc-500" />
-                </div>
-
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-zinc-600">
-                    Member Since
-                  </p>
-
-                  <p className="mt-0.5 text-sm text-zinc-300">
-                    {profile.joinedAt}
-                  </p>
-                </div>
               </div>
             </div>
-          </section>
-        </div>
 
-        {/* ================================================== */}
-        {/* FOOTER */}
-        {/* ================================================== */}
+            {/* Profile visibility */}
 
-        <div className="mt-8 text-center">
-          <p className="text-[11px] text-zinc-700">
-            Public profile
-          </p>
-        </div>
+            <div className="flex items-center gap-3 px-6 py-4">
+              <div className="rounded-lg bg-muted p-2">
+                <Globe className="h-4 w-4 text-mutedText" />
+              </div>
+
+              <div>
+                <p className="text-xs text-mutedText">Profile</p>
+
+                <p className="mt-0.5 text-sm text-brightText">Public</p>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
-    </main>
+    </div>
   );
 }
