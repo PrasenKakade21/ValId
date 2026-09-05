@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
-import { Eye, Pencil, Search, Trash2, Users } from "lucide-react";
+import { Eye, Pencil, Search, Trash2, UserPlus, Users } from "lucide-react";
 import { useParams } from "next/navigation";
 
 import { fetcher } from "@/lib/fetcher";
@@ -175,8 +175,8 @@ export default function MembersPage() {
           type="button"
           className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          <Users className="h-4 w-4" />
-          Add member
+          <UserPlus className="h-4 w-4" />
+          Invite Member
         </button>
       </div>
 

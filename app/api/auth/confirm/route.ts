@@ -1,3 +1,4 @@
+
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
     }
   );
 
+  // Verify the email confirmation token
   const { error } = await supabase.auth.verifyOtp({
     type: "signup",
     token_hash: tokenHash,
@@ -46,6 +48,43 @@ export async function GET(request: Request) {
     return NextResponse.redirect(
       `${origin}/login?error=confirmation_failed`
     );
+  }
+
+  /*
+   * At this point the email is verified and
+   * Supabase should have established the session.
+   */
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.redirect(
+      `${origin}/login?error=session_not_created`
+    );
+  }
+
+  /*
+   * Check whether the user has completed
+   * their profile onboarding.
+   */
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("profile_completed")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError) {
+    console.error("Profile lookup error:", profileError);
+
+    return NextResponse.redirect(
+      `${origin}/onboarding/profile?error=profile_lookup_failed`
+    );
+  }
+
+  if (!profile?.profile_completed) {
+    return NextResponse.redirect(`${origin}/onboarding/profile`);
   }
 
   return NextResponse.redirect(`${origin}/dashboard`);

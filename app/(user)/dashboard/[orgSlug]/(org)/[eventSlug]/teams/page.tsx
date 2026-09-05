@@ -153,9 +153,7 @@ export default function TeamsPage() {
                       <div>
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <span className="text-[10px] font-medium tracking-wider uppercase text-zinc-400">
-                              {event?.name || "Event"}
-                            </span>
+                      
                             <h3 className="text-base font-semibold text-zinc-950 dark:text-white">
                               {team.name}
                             </h3>

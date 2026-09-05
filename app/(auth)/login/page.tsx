@@ -1,12 +1,13 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,19 +19,30 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+});
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
+if (error) {
+  if (error.code === "email_not_confirmed") {
 
-    router.push("/dashboard");
-    router.refresh();
+    redirect(
+      `/redirect?message=${encodeURIComponent(
+        "Email Not Verified, redirecting to Email Verification"
+      )}&next=${encodeURIComponent(`signup/verify?email=${encodeURIComponent(email)}?reason=${error.code}`)}`
+    );
+    
+    return;
+  }
+
+  setError(error.message);
+  setLoading(false);
+  return;
+}
+
+router.push("/dashboard");
+router.refresh();
   }
 
   return (

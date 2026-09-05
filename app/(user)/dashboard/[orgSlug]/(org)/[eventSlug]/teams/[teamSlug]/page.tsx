@@ -11,6 +11,7 @@ import {
   Users,
   CheckCircle2,
   Clock,
+  User,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
@@ -182,8 +183,8 @@ const {
             onClick={() => setIsInviteOpen(true)}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
           >
-            <UserPlus size={16} />
-            Invite Member
+            <Users size={16} />
+            Add Member
           </button>
         </div>
 
